@@ -17,22 +17,24 @@
     {
         #region Methods
 
-        public static IAppBuilder UseAuthorizationServer(this IAppBuilder app, ILifetimeScope dependencyResolver, double expirationMinutes = 20, string tokenPath = "/token")
+        public static IAppBuilder MapOAuthServer(this IAppBuilder app, ILifetimeScope dependencyResolver, string tokenPath = "/token", double accessTokenExpirationMinutes = 20, double? clientCredsTokensExpiration = null, bool allowInsecureHttp = false)
         {
-            app.Use((ctx, next) =>
-            {
-                var scope = dependencyResolver.BeginLifetimeScope(MatchingScopeLifetimeTags.RequestLifetimeScopeTag);
-                ctx.Set("IApplicationProvider", scope.Resolve<IApplicationProvider>());
-                ctx.Set("UserValidatorFactory", scope.Resolve<UserValidatorFactory>());
-                return next();
-            });
+            app.Map(tokenPath, subApp => subApp.Use((ctx, next) =>
+             {
+                 var scope = dependencyResolver.BeginLifetimeScope(MatchingScopeLifetimeTags.RequestLifetimeScopeTag);
+                 ctx.Set("IApplicationProvider", scope.Resolve<IApplicationProvider>());
+                 ctx.Set("UserValidatorFactory", scope.Resolve<UserValidatorFactory>());
+                 if (clientCredsTokensExpiration.HasValue)
+                     ctx.Set("ClientCreadsExpiration", clientCredsTokensExpiration.Value);
+                 return next();
+             }));
             OAuthAuthorizationServerOptions options = new OAuthAuthorizationServerOptions()
             {
                 TokenEndpointPath = new PathString(tokenPath),
-                AccessTokenExpireTimeSpan = TimeSpan.FromMinutes(expirationMinutes),
+                AccessTokenExpireTimeSpan = TimeSpan.FromMinutes(accessTokenExpirationMinutes),
                 Provider = dependencyResolver.Resolve<OAuthAuthorizationServerProvider>(),
                 RefreshTokenProvider = dependencyResolver.Resolve<IAuthenticationTokenProvider>(),
-                AllowInsecureHttp = true
+                AllowInsecureHttp = allowInsecureHttp
             };
             app.UseOAuthAuthorizationServer(options);
             return app;

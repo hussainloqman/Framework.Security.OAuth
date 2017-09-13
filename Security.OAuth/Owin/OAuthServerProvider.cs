@@ -31,6 +31,7 @@
             var application = context.OwinContext.Get<IApplication>("oh:application");
             if (application != null)
             {
+                context.OwinContext.Set("Client_Creds", true);
                 ClaimsIdentity identity = new ClaimsIdentity(context.Options.AuthenticationType);
                 identity.AddClaim(new Claim(identity.NameClaimType, application.Name));
                 identity.AddClaim(new Claim("Id", application.Id));
@@ -141,9 +142,14 @@
 
         public override Task TokenEndpoint(OAuthTokenEndpointContext context)
         {
+            if (context.OwinContext.Get<bool>("Client_Creds"))
+            {
+                var clientCrds = context.OwinContext.Get<double>("ClientCreadsExpiration");
+                context.Properties.ExpiresUtc = DateTimeOffset.Now.AddMinutes(clientCrds);
+            }
+
             foreach (KeyValuePair<string, string> property in context.Properties.Dictionary)
                 context.AdditionalResponseParameters.Add(property.Key, property.Value);
-
             return Task.FromResult<object>(null);
         }
 
