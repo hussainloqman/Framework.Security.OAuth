@@ -1,99 +1,61 @@
-# EF-Repository
-Entity Framework implementation of a generic repository and specifications using AutoMapper. 
-the easy way to use EntityFramework in terms of repositories and organize your queries in an enterprise project. 
+# Framework.Security.OAuth
+a simple wrappr for OAUth to enable simple OAuth Implementation over owin
 
 **Use nuget**
 ```
-Install-Package Framework.Data.EF
+Install-Package Framework.Security.OAuth
 ```
 
 ####Using
-```
-IRepository<User> repository = new Repository<User>(dbContext);
-```
-dbContext is your entity framework Context. 
 
-you can then use the repository like this 
-`repository.GetAll()`  
-will return an Array of User as IEnumberable (not IQueriable). 
+##### configuring the middleware 
+In your resource server use the nuget package `Microsoft.Owin.Security.OAuth`
 
-##### using specification Pattern
-you can read more about spec pattern in this link https://en.wikipedia.org/wiki/Specification_pattern 
-
-1- Create the spec class 
-a simple select by Id class. 
 ```
-public class ById : Specification<User>
+app.UseOAuthBearerAuthentication(new OAuthBearerAuthenticationOptions());
+```
+
+In your security Authorization server use this nuget package 
+
+```
+app.UseAuthorizationServer(container, 20160,"/token");
+```
+
+##### configuring the Dependency Resolver 
+```
+builder.RegisterOAuth(true);
+builder.RegisterOAuthApplicationProvider<ApplicationProvider>();
+builder.RegisterOAuthUserValidator<PasswordUserValidator>("password");
+builder.RegisterOAuthUserValidator<FacebookUserValidator>("facebook");
+builder.RegisterOAuthUserValidator<GoogleUserValidator>("google");
+```
+use can pass `false` to the RegisterOAuth to disable the refresh token, but if you pass true to have to supply `RegisterOAuthApplicationProvider` with your own Implementation of the `IApplicationProvider` or `BaseApplicationProvider` 
+
+a simple implementation will look like this 
+
+```
+public class ApplicationProvider : BaseApplicationProvider
 {
-    public ById(int id)
+     public override bool ValidateApplication(string id, string secret, out IApplication application)
+     {
+            application = null;
+            return true;
+     }
+}
+```
+
+for each grant type you have to supply your own implementation of it 
+
+a simple implementation of grant type `password` will be 
+
+```
+public class PasswordUserValidator : BaseUserValidator<PasswordGrantType>
+{
+    protected override bool Validate(PasswordGrantType param, IApplication application, out IUser user)
     {
-      this.Expression = u => u.Id == id;
+         User dbUser = null;
+         return true;
     }
 }
 ```
-2- use the Spec in the repository 
-`repository.Get(new ById(1));` or 
-`repository.First(new ById(1));` or 
-`repository.Single(new ById(1));` 
 
-##### using Automapper. 
-1- create AutoMapper mapping 
-`Mapper.Create<User,UserDto>()`
-refere to the link for more details about automapper http://automapper.org/ 
-
-2- use the Mapper in the repository 
-`repository.GetAll<UserDto>();` or 
-`repository.Get<UserDto>(new ById(1));`
-
-##### Insert 
-```
-using(new UnitOfWork(DbContext)) 
-{
-  User usr = repository.Single(new ById(1));
-  .... 
-  repository.Add(usr);
-}
-```
-##### Update 
-```
-using(new UnitOfWork(DbContext)) 
-{
-  User usr = new User();
-  .... // do the changes needed in the using block
-}
-```
-##### Delete using Select 
-```
-using(new UnitOfWork(DbContext)) 
-{
- User usr = repository.Single(new ById(1));
- repository.Remove(usr); 
-}
-```
-##### Delete using Spec
-```
-using(new UnitOfWork(DbContext)) 
-{
- repository.Remove(new ById(1)); 
-}
-```
-
-#### Using Dependency Injection
-The Library is ment to be used using Dependency injection, however it can work without it.
-
-You must create a registery for 3 types in your Container 
-1- Map IRepository to Repository.
-2- Map IUnitOfWorkFactory to UnitOfWorkFactory.
-3- Map DbContext to your database Context.
-
-make sure to use the same Scope / LifeTimeManager for all the 3 registry. 
-
-you can then inject IRpository<User> and IUnitOfWorkFactory from your classes constractor 
-
-to create a UnitOfWork you can use the method IUnitOfWorkFactory.Create() in the using block
-```
-using(_unitOfWorkFactory.Create())
-{
- ...
-}
-```
