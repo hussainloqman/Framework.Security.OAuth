@@ -19,15 +19,6 @@
 
         public static IAppBuilder MapOAuthServer(this IAppBuilder app, ILifetimeScope dependencyResolver, string tokenPath = "/token", double accessTokenExpirationMinutes = 20, double? clientCredsTokensExpiration = null, bool allowInsecureHttp = false)
         {
-            app.Map(tokenPath, subApp => subApp.Use((ctx, next) =>
-             {
-                 var scope = dependencyResolver.BeginLifetimeScope(MatchingScopeLifetimeTags.RequestLifetimeScopeTag);
-                 ctx.Set("IApplicationProvider", scope.Resolve<IApplicationProvider>());
-                 ctx.Set("UserValidatorFactory", scope.Resolve<UserValidatorFactory>());
-                 if (clientCredsTokensExpiration.HasValue)
-                     ctx.Set("ClientCreadsExpiration", clientCredsTokensExpiration.Value);
-                 return next();
-             }));
             OAuthAuthorizationServerOptions options = new OAuthAuthorizationServerOptions()
             {
                 TokenEndpointPath = new PathString(tokenPath),
@@ -36,10 +27,18 @@
                 RefreshTokenProvider = dependencyResolver.Resolve<IAuthenticationTokenProvider>(),
                 AllowInsecureHttp = allowInsecureHttp
             };
-            app.UseOAuthAuthorizationServer(options);
+
+            app.Use(async (ctx, next) =>
+                    {
+                        var scope = dependencyResolver.BeginLifetimeScope(MatchingScopeLifetimeTags.RequestLifetimeScopeTag);
+                        ctx.Set("IApplicationProvider", scope.Resolve<IApplicationProvider>());
+                        ctx.Set("UserValidatorFactory", scope.Resolve<UserValidatorFactory>());
+                        if (clientCredsTokensExpiration.HasValue)
+                            ctx.Set("ClientCreadsExpiration", clientCredsTokensExpiration.Value);
+                        await next();
+                    }).UseOAuthAuthorizationServer(options);
             return app;
         }
-
         #endregion Methods
     }
 }
