@@ -3,7 +3,7 @@ a simple wrappr for OAUth to enable simple OAuth Implementation over owin
 
 **Use nuget**
 ```
-Install-Package Framework.Security.OAuth
+Install-Package Security.OAuth
 ```
 
 ####Using
@@ -18,7 +18,7 @@ app.UseOAuthBearerAuthentication(new OAuthBearerAuthenticationOptions());
 In your security Authorization server use this nuget package 
 
 ```
-app.UseAuthorizationServer(container, 20160,"/token");
+app.MapOAuthServer(container, 20160,"/token");
 ```
 
 ##### configuring the Dependency Resolver 

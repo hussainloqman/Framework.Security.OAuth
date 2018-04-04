@@ -19,7 +19,7 @@
             builder.RegisterType<UserValidatorFactory>().InstancePerRequest();
             if(!refreshTokenEnabled)
             {
-                builder.RegisterType<IApplicationProvider>().As<NoApplicationProvider>().SingleInstance();
+                builder.RegisterType<NoApplicationProvider>().As<IApplicationProvider>().SingleInstance();
             }
         }
 
